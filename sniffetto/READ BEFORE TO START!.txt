@@ -1,0 +1,28 @@
+Hello,
+
+In order to run this example you need:
+
+1) Apache (with mod rewrite), PHP (at least 8) (for windows user i suggest to install XAMPP, MySQL will be usefull in the next examples).
+2) Postman (for call our API), don't try with JS, in this example there is no CORS handling and the browser will block your requests!
+
+Installation :
+Is very simple, put all the files in your apache folder (www or htdocs).
+If you want to use a virtual host, here is my tutorial : https://dev.to/gpisano97/apache-tutorial-how-to-setup-a-virtual-host-for-phps-projects-separation-1lp6
+
+If you want to put the example in a subfolder (so access to api (for example) with http://localhost/examplesubfolder instead of http://localhost)
+you have to modify the .htaccess file at line 4, updating it from "RewriteBase /" to "RewriteBase /examplesubfolder/"
+
+For any issue, or setup problem or launching problem or a simple curiosity, open a discussion on GitHub at the link: https://github.com/gpisano97/Micron/discussions
+
+This is only a basic example about Micron and how it works.
+What you will learn? Here is a list!
+
+1) Framework structure (according to the htaccess all the request are collected by the index.php file... you can change this behavior modifing the .htaccess file).
+2) Defining simple and complex routes (with the uri params) based on the desidered HTTP Method.
+3) First approach to Micron Middleware to handle Authentication, Authorization and request Content Type.
+4) Consume the request datas like: body, query params, uri params (also known as path params).
+5) Send the response.
+
+So, you will use the Route, Response and Middleware module... it seems a lot for a "basic usage example" but is very user-friendly and is only a little piece of Micron!
+
+Enjoy!

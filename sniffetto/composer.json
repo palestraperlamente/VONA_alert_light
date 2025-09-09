@@ -1,0 +1,7 @@
+{
+    "require": {
+        "gabordemooij/redbean": "^5.7",
+        "ext-dom": "20031129",
+        "smalot/pdfparser": "^2.12"
+    }
+}

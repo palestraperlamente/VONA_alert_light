@@ -1,0 +1,155 @@
+{
+	"info": {
+		"_postman_id": "5b49b609-0630-42c7-b80f-20a34e8083ea",
+		"name": "Micron Basic Example",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "16046610"
+	},
+	"item": [
+		{
+			"name": "Basic GET example",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Basic POST example",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"field1\" : 1,\r\n    \"field2\" : 2\r\n}\r\n\r\n//uncomment this if you want to run an invalid body\r\n/*{\r\n    \"field1\" : 1\r\n}*/",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Basic POST example with different body checking",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"optionalField1\" : 1,\r\n    \"optionalField2\" : 2\r\n}\r\n\r\n//also this will works\r\n/* {\r\n    \"optionalField2\" : 2\r\n} */\r\n\r\n\r\n//and also this\r\n/* {\r\n    \"optionalField1\" : 1\r\n} */\r\n\r\n//but not this\r\n/* {\r\n    \"field1\" : 1\r\n}\r\n */",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/dontmatterwhichparams",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"dontmatterwhichparams"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Path Params (URI Params) example",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/count/to/:loop_limit",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"count",
+						"to",
+						":loop_limit"
+					],
+					"variable": [
+						{
+							"key": "loop_limit",
+							"value": "10"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Path params examples",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/cities",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"cities"
+					],
+					"query": [
+						{
+							"key": "country",
+							"value": null,
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:6000",
+			"type": "string"
+		}
+	]
+}
