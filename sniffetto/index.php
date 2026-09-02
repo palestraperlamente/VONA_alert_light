@@ -19,13 +19,10 @@ require "lib/terremoti.php";
 // include le funzioni di lettura/scrittura al db
 include_once "dbfunctions.php";
 
-// apre la connessione al database
+// apre la connessione al database (host/porta/credenziali da config.php,
+// gia' incluso come effetto collaterale di micron/core/Database/Database.php)
 try {
-    if (array_key_exists('HTTP_HOST', $_SERVER) && str_ends_with($_SERVER['HTTP_HOST'], 'noexit.it')) {
-        R::setup( 'mysql:host=mysql.netsons.com;dbname=ykqtppjf_sniffetto', 'ykqtppjf_dbuser', '$niff3tt0!DB' );
-    } else {
-        R::setup( 'mysql:host=localhost;dbname=sniffetto', 'root', 'root' );
-    }
+    R::setup( 'mysql:host='.DB_HOST.';port='.DB_PORT.';dbname='.DB_DATABASE_NAME, DB_USERNAME, DB_PASSWORD );
     //R::fancyDebug(TRUE);
 } catch (Exception $exc) {
     echo $exc->getTraceAsString();
