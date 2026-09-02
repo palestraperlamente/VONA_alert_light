@@ -1,0 +1,7 @@
+# log locali / generati a runtime
+php_errors.log
+sniffetto/error_log
+
+# configurazione IDE
+sniffetto/.idea/
+.idea/
