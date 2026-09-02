@@ -112,6 +112,37 @@ String fnc_http_client_post(String _url, String _data, String _user, String _pas
 	return resp;
 }
 
+/*
+ * Contratto API con il backend "Sniffetto" (vedi sniffetto/README.md, sezione
+ * "Sniffetto endpoints" -> GET /v1/vona/{vulcano}, per la documentazione
+ * completa lato server).
+ *
+ * Endpoint chiamato: GET http://www.noexit.it/sniffetto/v1/vona
+ *   - il segmento path {vulcano} e' accettato dalla route ma ignorato dal
+ *     server (restituisce sempre l'ultimo comunicato VONA in assoluto), per
+ *     questo qui si chiama l'URL nudo, senza volcano.
+ *
+ * Risposta JSON attesa (envelope Micron):
+ *   {"result":{"state":true,"description":"..."},
+ *    "data":{... ,"current_color":"GREEN", "previous_color":"YELLOW", ...}}
+ *
+ * Parsing: NON e' un vero parser JSON, ma una ricerca di sottostringa con
+ * offset fissi:
+ *   1) cerca "current_color" nella risposta grezza;
+ *   2) salta 16 caratteri (= len("current_color") + i 3 caratteri fissi
+ *      "\":\"" tra la chiave e il valore) per arrivare all'inizio del valore;
+ *   3) cerca la successiva sequenza "\"," per individuare la fine del valore.
+ * Questo funziona solo se "current_color" e' seguito da un altro campo JSON
+ * (serve la virgola dopo la stringa) e se chiave/valore non contengono spazi
+ * extra: qualsiasi cambiamento nel formato/ordine dei campi restituiti da
+ * /v1/vona rompe silenziosamente il parsing (s_alert2 resta vuota o con un
+ * valore sporco, e si finisce nel ramo "colore non riconosciuto" qui sotto).
+ *
+ * Valori attesi per current_color: GREEN / YELLOW / ORANGE / RED (presi
+ * verbatim dal comunicato VONA). Qualsiasi altro valore, la tabella vuota
+ * lato server (data: []), o un errore HTTP fanno accendere il LED bianco
+ * fisso (ramo else).
+ */
 void vona_update() {
 	s_vona = fnc_http_client_get(String("http://www.noexit.it/sniffetto/v1/vona"),String(""),String(""),true,true);
 	pos_chiave_json = (String(s_vona).indexOf(String("current_color"))+1);
