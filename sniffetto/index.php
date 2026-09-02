@@ -1,4 +1,5 @@
 <?php
+// avviare UniServer Generic 82, MYSQL e APACHE, http://localhost/sniffetto/, http://localhost/sniffetto/sniff
 // basato sul framework di https://github.com/gpisano97/Micron
 // API "sniff" chiamata da https://console.cron-job.org/jobs
 
@@ -20,7 +21,7 @@ include_once "dbfunctions.php";
 
 // apre la connessione al database
 try {
-    if (array_key_exists('HTTP_HOST', $_SERVER) && $_SERVER['HTTP_HOST'] == 'www.noexit.it') {
+    if (array_key_exists('HTTP_HOST', $_SERVER) && str_ends_with($_SERVER['HTTP_HOST'], 'noexit.it')) {
         R::setup( 'mysql:host=mysql.netsons.com;dbname=ykqtppjf_sniffetto', 'ykqtppjf_dbuser', '$niff3tt0!DB' );
     } else {
         R::setup( 'mysql:host=localhost;dbname=sniffetto', 'root', 'root' );
@@ -38,11 +39,204 @@ $route->enableCORS();
 
 try {
 
+    // dashboard HTML one-page: mostra gli ultimi dati di /v1/vona e /v1/terremoti in due card
+    $route->get("/", function (Request $request) {
+        header('Content-Type: text/html; charset=UTF-8');
+
+        $field = function (array $data, string $key) {
+            return (isset($data[$key]) && $data[$key] !== '') ? htmlspecialchars((string) $data[$key]) : '—';
+        };
+
+        $vona = getLastVONA();
+        $terremoto = getLastTerremoto();
+
+        $alertColors = [
+            'GREEN'  => '#2e7d32',
+            'YELLOW' => '#f9a825',
+            'ORANGE' => '#ef6c00',
+            'RED'    => '#c62828',
+        ];
+        $badgeColor = $alertColors[strtoupper($vona['current_color'] ?? '')] ?? '#78909c';
+
+        if (empty($vona)) {
+            $vonaBody = '<p class="empty">Nessun comunicato VONA disponibile. Esegui <code>/sniff</code> per avviare la raccolta dati.</p>';
+        } else {
+            $vCurrentColor  = $field($vona, 'current_color');
+            $vVolcano       = $field($vona, 'volcano');
+            $vPreviousColor = $field($vona, 'previous_color');
+            $vNoticeNumber  = $field($vona, 'notice_number');
+            $vIssued        = $field($vona, 'issued');
+            $vActivity      = $field($vona, 'activity_summary');
+            $vCreated       = $field($vona, 'created');
+
+            $vonaBody = <<<HTML
+                <span class="badge" style="background:{$badgeColor}">{$vCurrentColor}</span>
+                <dl>
+                    <dt>Vulcano</dt><dd>{$vVolcano}</dd>
+                    <dt>Colore precedente</dt><dd>{$vPreviousColor}</dd>
+                    <dt>Bollettino n.</dt><dd>{$vNoticeNumber}</dd>
+                    <dt>Emesso il</dt><dd>{$vIssued}</dd>
+                    <dt>Riepilogo attività</dt><dd>{$vActivity}</dd>
+                    <dt>Rilevato da Sniffetto il</dt><dd>{$vCreated}</dd>
+                </dl>
+                HTML;
+        }
+
+        if (empty($terremoto)) {
+            $terremotoBody = '<p class="empty">Nessun terremoto disponibile. Esegui <code>/sniff</code> per avviare la raccolta dati.</p>';
+        } else {
+            $tLocation  = $field($terremoto, 'location');
+            $tMagnitude = $field($terremoto, 'magnitude');
+            $tDepth     = $field($terremoto, 'depth');
+            $tLatitude  = $field($terremoto, 'latitude');
+            $tLongitude = $field($terremoto, 'longitude');
+            $tEventTime = $field($terremoto, 'event_time');
+            $tCreated   = $field($terremoto, 'created');
+
+            $terremotoBody = <<<HTML
+                <dl>
+                    <dt>Località</dt><dd>{$tLocation}</dd>
+                    <dt>Magnitudo</dt><dd>{$tMagnitude}</dd>
+                    <dt>Profondità</dt><dd>{$tDepth} km</dd>
+                    <dt>Coordinate</dt><dd>{$tLatitude}, {$tLongitude}</dd>
+                    <dt>Orario evento</dt><dd>{$tEventTime}</dd>
+                    <dt>Rilevato da Sniffetto il</dt><dd>{$tCreated}</dd>
+                </dl>
+                HTML;
+        }
+
+        echo <<<HTML
+            <!doctype html>
+            <html lang="it">
+            <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Sniffetto — Stato VONA &amp; Terremoti</title>
+            <style>
+                :root {
+                    color-scheme: light dark;
+                    --bg: #f2f4f7;
+                    --card-bg: #ffffff;
+                    --text: #1c1e21;
+                    --muted: #5f6570;
+                    --border: #e3e6ea;
+                }
+                @media (prefers-color-scheme: dark) {
+                    :root {
+                        --bg: #14171a;
+                        --card-bg: #1f2327;
+                        --text: #f0f1f3;
+                        --muted: #9aa1ac;
+                        --border: #2c3138;
+                    }
+                }
+                * { box-sizing: border-box; }
+                body {
+                    margin: 0;
+                    padding: 24px 16px 48px;
+                    background: var(--bg);
+                    color: var(--text);
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                }
+                main {
+                    max-width: 640px;
+                    margin: 0 auto;
+                }
+                h1 {
+                    font-size: 1.5rem;
+                    margin: 0 0 4px;
+                }
+                .subtitle {
+                    color: var(--muted);
+                    margin: 0 0 24px;
+                    font-size: 0.95rem;
+                }
+                .card {
+                    background: var(--card-bg);
+                    border: 1px solid var(--border);
+                    border-radius: 14px;
+                    padding: 20px 24px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+                }
+                .card h2 {
+                    margin: 0 0 12px;
+                    font-size: 1.15rem;
+                }
+                .badge {
+                    display: inline-block;
+                    color: #fff;
+                    font-weight: 600;
+                    font-size: 0.85rem;
+                    letter-spacing: .02em;
+                    padding: 4px 12px;
+                    border-radius: 999px;
+                    margin-bottom: 14px;
+                }
+                dl {
+                    margin: 0;
+                    display: grid;
+                    grid-template-columns: minmax(120px, auto) 1fr;
+                    gap: 8px 16px;
+                }
+                dt {
+                    color: var(--muted);
+                    font-size: 0.85rem;
+                }
+                dd {
+                    margin: 0;
+                    font-size: 0.95rem;
+                    word-break: break-word;
+                }
+                .empty {
+                    color: var(--muted);
+                    font-size: 0.95rem;
+                    margin: 0;
+                }
+                .empty code {
+                    background: var(--border);
+                    padding: 2px 6px;
+                    border-radius: 6px;
+                }
+                footer {
+                    text-align: center;
+                    color: var(--muted);
+                    font-size: 0.8rem;
+                    margin-top: 8px;
+                }
+                @media (max-width: 420px) {
+                    dl { grid-template-columns: 1fr; }
+                    dt { margin-top: 8px; }
+                }
+            </style>
+            </head>
+            <body>
+            <main>
+                <h1>🌋 Sniffetto</h1>
+                <p class="subtitle">Stato allerta Etna e ultimo terremoto rilevato</p>
+
+                <section class="card">
+                    <h2>Comunicato VONA — Etna</h2>
+                    {$vonaBody}
+                </section>
+
+                <section class="card">
+                    <h2>Ultimo terremoto</h2>
+                    {$terremotoBody}
+                </section>
+
+                <footer>Dati INGV · aggiornati tramite <code>/sniff</code></footer>
+            </main>
+            </body>
+            </html>
+            HTML;
+    });
+
     //this is a simple API REST hello world
 
-    //this function listen for a GET request with '/' URL.
-    //The $request parameter will contain informations about the request 
-    $route->get("/", function(Request $request){
+    //this function listen for a GET request with '/status' URL.
+    //The $request parameter will contain informations about the request
+    $route->get("/status", function(Request $request){
         //this class provide a set of predefined response with the relative HTTP Code, the response content type is always application/json
         $response = new Response();
         //this response set the http code to 200 and return a message. Can also return an array (or object)

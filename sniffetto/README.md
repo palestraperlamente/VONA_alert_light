@@ -7,6 +7,7 @@ A small and usefull PHP Api REST framework.
 * [Setup](#setup)
 * [Utilization](#utilization)
 * [API](#api)
+* [Sniffetto endpoints](#sniffetto-endpoints)
 * [Demos](#demos)
 
 
@@ -138,6 +139,89 @@ Manage MySQL Database connection and interaction, extends PDO and you can access
 | Name | Prameters | Description | Return value |
 | ---- | --------- | ----------- | ---------------- |
 | `__construct()` | `Database $database` </br> `string $tableName` | Create new Table object | `DBTable` |
+
+## Sniffetto endpoints
+
+This is the concrete set of routes registered in this app's `index.php` on top of Micron. Every response shares the same JSON envelope produced by `Response::success()`:
+
+```json
+{
+  "result": { "state": true, "description": "<message>" },
+  "data": { }
+}
+```
+
+`result.state` is `false` and `data` is `[]` on error (unmatched route → `404.php`; thrown exception → caught in `index.php` and returned with `$th->getCode()` as HTTP status). **No auth**: token control is disabled app-wide (`tokenControl: false`), and CORS is open to any origin (`enableCORS()`), so none of these routes require a token or restrict callers.
+
+### `GET /`
+Dashboard page, the only route that does **not** return JSON. It overrides Micron's default `Content-Type: application/json` header (set via `header()` before echoing) and renders a single self-contained HTML page — inline `<style>`, no external assets/includes — showing the same data as `/v1/vona/{vulcano}` and `/v1/terremoti` (it calls `getLastVONA()`/`getLastTerremoto()` directly, no HTTP round-trip) as two stacked cards: VONA bulletin on top (with a colored badge for `current_color`), latest earthquake below. Each card falls back to a "no data yet, run `/sniff`" message when its table is empty. Layout is a single centered column that switches its field grid to one column under 420px width, and follows `prefers-color-scheme` for light/dark.
+
+### `GET /status`
+Health-check / hello-world route. `data` is always `[]`.
+```json
+{ "result": { "state": true, "description": "Sniffetto 1.0" }, "data": [] }
+```
+
+### `GET /sniff`
+The ingestion endpoint — meant to be hit by an external cron (`cron-job.org`), not by the firmware. It runs both scrapers (`lib\VONA::sniff()` for Etna, `lib\terremoti::sniff()`) and tries to persist a new row for each. It does **not** return the scraped bulletin/earthquake data itself — only a status summary of the ingestion attempt:
+```json
+{
+  "result": { "state": true, "description": "Operazione completata!" },
+  "data": {
+    "VONA": { "topic": "VONA", "update": true, "error": false, "errorMessage": "" },
+    "terremoti": { "topic": "terremoti", "update": false, "error": false, "errorMessage": "" }
+  }
+}
+```
+- `update: true` means a new record was actually inserted (i.e. the source had a `notice_number`/`event_id` not already in the DB — see `updateVONA()`/`updateTerremoti()` in `dbfunctions.php`); `update: false` means nothing new was found, so no row was written.
+- `error: true` means the scraper itself failed (e.g. INGV page/PDF unreachable, or the FDSN webservice down); `errorMessage` carries the detail. A scraper error does not stop the other scraper from running.
+
+### `GET /v1/vona/{vulcano}`
+Read endpoint polled by the firmware for the current alert color. `data` is the latest `vona` DB row, flattened (RedBean returns every column as a string, including `id`):
+```json
+{
+  "result": { "state": true, "description": "Operazione completata!" },
+  "data": {
+    "id": "12",
+    "created": "2026-07-01 10:15:03",
+    "disclaimer": "Scollo, S., Prestifilippo, M., ... (2019) ... Corradini, S., ... (2018)",
+    "source": "https://www.ct.ingv.it/sezioniesterne/Comunicati/ComunicatiVonaN.php",
+    "issued": "20260701/0800Z",
+    "volcano": "ETNA",
+    "current_color": "ORANGE",
+    "previous_color": "YELLOW",
+    "notice_number": "2026042",
+    "activity_summary": "Explosive activity ..."
+  }
+}
+```
+- `current_color`/`previous_color` are free text taken verbatim from bulletin fields (4)/(5) — expected values are `GREEN`/`YELLOW`/`ORANGE`/`RED`, matching the colors the firmware's `analogWrite` logic understands (anything else lights solid white).
+- **`{vulcano}` is accepted but ignored**: `getLastVONA()` always returns the single most recent `vona` row regardless of its value. It doesn't even need to be present in the request — Micron's path-param matching (`Route::navigate()`) only checks that the route's static prefix (`v1/vona`) matches; a missing trailing segment still matches the route with an empty/unset param. This is why the firmware calls the bare `http://www.noexit.it/sniffetto/v1/vona` (no volcano segment at all) and still gets a response.
+- If the `vona` table is empty (nothing ever sniffed successfully), `data` is `[]` — the firmware's raw substring search for `"current_color"` then finds nothing and falls into its unrecognized-color branch (solid white).
+
+### `GET /v1/terremoti`
+Read endpoint for the latest nearby earthquake. `data` is the latest `terremoti` DB row, flattened:
+```json
+{
+  "result": { "state": true, "description": "Operazione completata!" },
+  "data": {
+    "id": "7",
+    "created": "2026-07-01 09:00:12",
+    "disclaimer": "",
+    "source": "http://webservices.ingv.it/fdsnws/event/1/query?format=text&lat=37.53&lon=14.97&maxradiuskm=200&limit=1",
+    "event_id": "12345678",
+    "event_time": "2026-07-01T08:55:30",
+    "latitude": "37.75",
+    "longitude": "15.00",
+    "depth": "2.3",
+    "magnitude": "1.8",
+    "location": "Etna area"
+  }
+}
+```
+- No path or query params — always the single latest event within 200km of the hardcoded Etna coordinates (`lat=37.53, lon=14.97`).
+- `disclaimer` is always `""` here (`lib\terremoti::sniff()` never sets one, unlike the VONA scraper).
+- No client in this repo currently consumes this route (the firmware only polls `/v1/vona`).
 
 ## Demos
 A rich collection of code's examples.

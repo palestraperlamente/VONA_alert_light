@@ -1,7 +1,7 @@
 <?php
 
 //Database settings
-if (array_key_exists('HTTP_HOST', $_SERVER) && $_SERVER['HTTP_HOST'] == 'noexit.it') {
+if (array_key_exists('HTTP_HOST', $_SERVER) && str_ends_with($_SERVER['HTTP_HOST'], 'noexit.it')) {
     define("DB_HOST", "mysql.netsons.com");
     define("DB_DATABASE_NAME", "ykqtppjf_sniffetto");
     define("DB_USERNAME", "ykqtppjf_dbuser");

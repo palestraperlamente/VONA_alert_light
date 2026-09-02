@@ -37,16 +37,19 @@ class VONA
         $doc->loadHTMLFile($source, LIBXML_NOWARNING | LIBXML_NOERROR);
         $table = $doc->getElementsByTagName('table')->item(0);
 
-        // data
-        $tr = $table->getElementsByTagName('tr')->item(1);
-
-        // cerca il tag col link
+        // scorre le righe alla ricerca del bollettino ETNA (salta STROMBOLI e altri eventuali)
+        // partendo dalla seconda riga della tabella (saltando la testata)
         $href = '';
-        foreach ($tr->childNodes as $td) {
-            if ($td->childElementCount == 1) {
-                $a = $td->firstElementChild;
+        for ($i = 1; $i <= $table->getElementsByTagName('tr')->count(); $i++) {
+            // la prima colonna contiene il nome del vulcano
+            $tr = $table->getElementsByTagName('tr')->item($i);
+            $td = $tr->childNodes->item(0);
+            if ($td->nodeValue == 'ETNA') {
+                $td = $tr->childNodes->item(3);
+                $a = $td->childNodes->item(0);
                 $href = $a->getAttribute('href');
                 $href = str_replace('../../', 'https://www.ct.ingv.it/', $href);
+                break;
             }
         }
 
